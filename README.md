@@ -102,7 +102,5 @@ User Space Reader Application
 * Event Driven Systems
 * Embedded Linux Internals
 * Production Style Driver Development
-=======
-# Industrial-Embedded-Linux-Sensor-Hub-Framework
-A production-style Linux kernel development project demonstrating character drivers, ring buffers, kernel threads, wait queues, interrupt-driven event processing, platform drivers, device tree integration, synchronization primitives, user-space interfaces, and advanced driver debugging techniques.
->>>>>>> e34707e4f51ec298e5ef96b42fa41932ffe6c0c7
+
+>>>>>>>
