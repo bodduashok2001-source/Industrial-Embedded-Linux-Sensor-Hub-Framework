@@ -7,6 +7,9 @@
 #include <linux/delay.h>
 #include <linux/string.h>
 #include <linux/wait.h>
+#include <linux/poll.h>
+#include <linux/interrupt.h>
+#include <linux/workqueue.h>
 
 #define DEVICE_NAME "lkmchardev"
 #define CLASS_NAME  "lkm_class"
@@ -27,6 +30,8 @@ static struct device *my_device;
 static struct task_struct *sensor_thread;
 static int sensor_value = 25;
 static wait_queue_head_t sensor_wq;
+static struct work_struct sensor_work;
+static struct mutex rb_lock;
 
 
 /* ================= RING BUFFER ================= */
@@ -59,41 +64,65 @@ static int rb_is_full(void)
     return ((rb.head + 1) % RING_SIZE) == rb.tail;
 }
 
+static void sensor_work_fn(struct work_struct *work)
+{
+    int slot;
+    char msg[MAX_MSG_SIZE];
+    int len;
+	
+	mutex_lock(&rb_lock);
+
+    if (rb_is_full())
+	{
+		mutex_unlock(&rb_lock);
+		return;
+	}
+
+    slot = rb.head;
+
+    len = snprintf(msg,
+                   MAX_MSG_SIZE,
+                   "TEMP:%d",
+                   sensor_value++);
+
+    memcpy(rb.data[slot], msg, len);
+
+    rb.len[slot] = len;
+
+    rb.head = (rb.head + 1) % RING_SIZE;
+
+    wake_up_interruptible(&sensor_wq);
+
+    printk(KERN_INFO
+           "workqueue stored slot=%d value=%s\n",
+           slot,
+           msg);
+	
+	mutex_unlock(&rb_lock);
+}
+
+static irqreturn_t sensor_irq_handler(
+        int irq,
+        void *dev_id)
+{
+    printk(KERN_INFO
+           "sensor irq occurred\n");
+
+    schedule_work(&sensor_work);
+
+    return IRQ_HANDLED;
+}
+
 /* ================= Thread ================= */
 
 static int sensor_thread_fn(void *data)
 {
-	while (!kthread_should_stop())
-	{
-		int slot;
-		char msg[MAX_MSG_SIZE];
-		int len;
+    while (!kthread_should_stop())
+    {
+        sensor_irq_handler(0, NULL);
 
-		if (!rb_is_full())
-		{
-			slot = rb.head;
-
-			len = snprintf(msg,
-						   MAX_MSG_SIZE,
-						   "TEMP:%d",
-						   sensor_value++);
-
-			memcpy(rb.data[slot], msg, len);
-
-			rb.len[slot] = len;
-
-			rb.head = (rb.head + 1) % RING_SIZE;
-			
-			wake_up_interruptible(&sensor_wq);
-
-			printk(KERN_INFO
-				   "sensor event stored slot=%d value=%s\n",
-				   slot,
-				   msg);
-		}
-
-		msleep(2000);
-	}
+        msleep(2000);
+    }
 
     return 0;
 }
@@ -119,10 +148,13 @@ static ssize_t my_write(struct file *file,
                         loff_t *off)
 {
     int slot;
+	
+	mutex_lock(&rb_lock);
 
     if (rb_is_full())
     {
         printk(KERN_ERR "lkmchardev: ring buffer full\n");
+		mutex_unlock(&rb_lock);
         return -ENOMEM;
     }
 
@@ -132,13 +164,18 @@ static ssize_t my_write(struct file *file,
     slot = rb.head;
 
     if (copy_from_user(rb.data[slot], buf, len))
+	{
+		mutex_unlock(&rb_lock);
         return -EFAULT;
+	}
 
     rb.len[slot] = len;
 
     rb.head = (rb.head + 1) % RING_SIZE;
 
     printk(KERN_INFO "stored message in slot=%d\n", slot);
+	
+	mutex_unlock(&rb_lock);
 
     return len;
 }
@@ -157,6 +194,8 @@ static ssize_t my_read(struct file *file,
     wait_event_interruptible(
         sensor_wq,
         !rb_is_empty());
+	
+	mutex_lock(&rb_lock);
 
     slot = rb.tail;
 
@@ -186,11 +225,16 @@ static ssize_t my_read(struct file *file,
         len = msg_len;
 
     if (copy_to_user(buf, temp, len))
-        return -EFAULT;
+	{
+		mutex_unlock(&rb_lock);
+		return -EFAULT;
+	}
 
     rb.tail = (rb.tail + 1) % RING_SIZE;
 
     printk(KERN_INFO "read message from slot=%d\n", slot);
+	
+	mutex_unlock(&rb_lock);
 
     return len;
 }
@@ -223,6 +267,21 @@ static long my_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return 0;
 }
 
+static __poll_t my_poll(struct file *file,
+                        poll_table *wait)
+{
+    __poll_t mask = 0;
+
+    poll_wait(file,
+              &sensor_wq,
+              wait);
+
+    if (!rb_is_empty())
+        mask |= POLLIN | POLLRDNORM;
+
+    return mask;
+}
+
 /* File operations structure */
 static struct file_operations fops = {
     .owner = THIS_MODULE,
@@ -231,6 +290,7 @@ static struct file_operations fops = {
     .read = my_read,
     .write = my_write,
     .unlocked_ioctl = my_ioctl,
+	.poll = my_poll,
 };
 
 /* ================= INIT & EXIT ================= */
@@ -251,8 +311,13 @@ static int __init my_init(void)
                     sensor_thread_fn,
                     NULL,
                     "sensor_thread");
-	
+					
 	init_waitqueue_head(&sensor_wq);
+	
+	mutex_init(&rb_lock);
+	
+	INIT_WORK(&sensor_work,
+          sensor_work_fn);
 
     printk(KERN_INFO "lkmchardev: created /dev/lkmchardev\n");
     return 0;
