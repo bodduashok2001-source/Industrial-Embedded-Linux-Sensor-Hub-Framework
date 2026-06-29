@@ -10,6 +10,7 @@
 #include <linux/poll.h>
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
+#include <linux/platform_device.h>
 
 #define DEVICE_NAME "lkmchardev"
 #define CLASS_NAME  "lkm_class"
@@ -293,12 +294,14 @@ static struct file_operations fops = {
 	.poll = my_poll,
 };
 
-/* ================= INIT & EXIT ================= */
+/* =================== PROBE ====================== */
 
-static int __init my_init(void)
+static int sensor_probe(struct platform_device *pdev)
 {
-    if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME) < 0)
-        return -1;
+    printk(KERN_INFO "Platform Driver: probe() called\n");
+	
+	if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME) < 0)
+	return -1;
 
     cdev_init(&my_cdev, &fops);
 
@@ -307,10 +310,11 @@ static int __init my_init(void)
 
     my_class = class_create(THIS_MODULE, CLASS_NAME);
     my_device = device_create(my_class, NULL, dev_num, NULL, DEVICE_NAME);
+	
 	sensor_thread = kthread_run(
-                    sensor_thread_fn,
-                    NULL,
-                    "sensor_thread");
+				sensor_thread_fn,
+				NULL,
+				"sensor_thread");
 					
 	init_waitqueue_head(&sensor_wq);
 	
@@ -320,12 +324,13 @@ static int __init my_init(void)
           sensor_work_fn);
 
     printk(KERN_INFO "lkmchardev: created /dev/lkmchardev\n");
+
     return 0;
 }
 
-static void __exit my_exit(void)
+static int sensor_remove(struct platform_device *pdev)
 {
-    device_destroy(my_class, dev_num);
+	device_destroy(my_class, dev_num);
     class_destroy(my_class);
     cdev_del(&my_cdev);
     unregister_chrdev_region(dev_num, 1);
@@ -333,6 +338,43 @@ static void __exit my_exit(void)
     kthread_stop(sensor_thread);
 
     printk(KERN_INFO "lkmchardev: removed\n");
+	
+    printk(KERN_INFO "Platform Driver: remove() called\n");
+
+    return 0;
+}
+
+
+static struct platform_driver sensor_driver = {
+    .probe = sensor_probe,
+    .remove = sensor_remove,
+    .driver = {
+        .name = "sensor_demo",
+    },
+};
+
+/* ================= INIT & EXIT ================= */
+
+static struct platform_device *sensor_pdev;
+
+static int __init my_init(void)
+{
+	sensor_pdev =
+    platform_device_register_simple(
+        "sensor_demo",
+        -1,
+        NULL,
+        0);
+	
+	platform_driver_register(&sensor_driver);
+	
+    return 0;
+}
+
+static void __exit my_exit(void)
+{	
+	platform_driver_unregister(&sensor_driver);
+	platform_device_unregister(sensor_pdev);
 }
 
 module_init(my_init);
