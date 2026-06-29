@@ -4,7 +4,7 @@
 
 Industrial Embedded Linux Sensor Hub Framework is a production-oriented Linux kernel development project designed to simulate a real embedded sensor subsystem commonly found in Qualcomm, AMD, Nvidia, Intel and Embedded Linux platforms.
 
-The project demonstrates end-to-end Linux device driver development concepts including character drivers, IOCTL interfaces, ring buffers, kernel threads, wait queues, poll mechanisms, interrupt handling, workqueues, synchronization primitives and event-driven architectures.
+The project demonstrates end-to-end Linux device driver development concepts including Platform Drivers, Character Device Drivers, IOCTL interfaces, Ring Buffers, Producer–Consumer architecture, Kernel Threads, Wait Queues, poll(), Interrupt Handling (Top Half/Bottom Half), Workqueues, Synchronization primitives and event-driven driver architectures.
 
 The objective is to move beyond basic Linux character driver examples and build a scalable sensor framework that closely resembles real-world embedded Linux driver architectures.
 
@@ -88,6 +88,13 @@ Bottom Half:
 * ISR workload reduction
 * Bottom-half execution model
 
+### Platform Driver Framework
+
+* Platform Device and Platform Driver implementation
+* Device lifecycle management using probe() and remove()
+* Driver initialization through Linux device model
+* Simulated platform device for development environment
+
 ### Synchronization
 
 * Mutex protected ring buffer
@@ -114,6 +121,14 @@ Bottom Half:
 
 ## Current Architecture
 
+Platform Device
+↓
+Platform Driver
+↓
+probe()
+↓
+Character Device Driver
+↓
 Kernel Thread
 ↓
 Fake Interrupt Generation
@@ -148,6 +163,10 @@ User Space Applications
 * Interrupt Handling
 * Top Half / Bottom Half
 * Workqueues
+* Platform Device
+* Platform Driver
+* Linux Device Model
+* probe()/remove() Lifecycle
 * Mutex Synchronization
 * User Space ↔ Kernel Space Communication
 
@@ -170,19 +189,23 @@ User Space Applications
 
 ### Phase 2
 
-* Platform Driver
 * Device Tree Integration
 * sysfs Interface
 * procfs Interface
+* DebugFS
+* Kernel Timer
+* kfifo Integration
 
 ### Phase 3
 
-* GPIO Driver Extension
-* I2C Driver Extension
-* SPI Driver Extension
+* GPIO Driver Integration
+* I2C Driver Integration
+* SPI Driver Integration
+* Multi-Sensor Framework
 
 ### Phase 4
 
+* Power Management (Suspend/Resume)
 * MMIO Register Framework
 * DMA Simulation Framework
 * Driver Debugging Infrastructure
@@ -198,4 +221,7 @@ User Space Applications
 * Interrupt Handling
 * Bottom Half Processing
 * Embedded Linux Internals
+* Linux Device Model
+* Platform Driver Framework
+* Driver Lifecycle Management
 * Production Style Driver Development
