@@ -208,7 +208,7 @@ User Space Applications
 
 ## Planned Roadmap
 
-### Phase 3
+### Phase 2
 
 * Device Tree
 * GPIO Driver Integration
@@ -216,7 +216,7 @@ User Space Applications
 * SPI Driver Integration
 * Multi-Sensor Framework
 
-### Phase 4
+### Phase 3
 
 * DebugFS
 * Kernel Timer
