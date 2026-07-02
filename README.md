@@ -131,6 +131,8 @@ Bottom Half:
 
 ## Current Architecture
 
+```text
+
 Platform Device
 ↓
 Platform Driver
@@ -163,6 +165,8 @@ Wait Queue
 poll()
 ↓
 User Space Applications
+
+```
 
 ---
 
