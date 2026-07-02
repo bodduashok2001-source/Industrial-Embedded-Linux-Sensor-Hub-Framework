@@ -11,6 +11,8 @@
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 #define DEVICE_NAME "lkmchardev"
 #define CLASS_NAME  "lkm_class"
@@ -33,7 +35,7 @@ static int sensor_value = 25;
 static wait_queue_head_t sensor_wq;
 static struct work_struct sensor_work;
 static struct mutex rb_lock;
-
+static struct proc_dir_entry *proc_entry;
 
 /* ================= RING BUFFER ================= */
 
@@ -294,6 +296,74 @@ static struct file_operations fops = {
 	.poll = my_poll,
 };
 
+static ssize_t mode_show(struct device *dev,
+                         struct device_attribute *attr,
+                         char *buf)
+{
+    return sprintf(buf, "%d\n", mode);
+}
+
+static ssize_t mode_store(struct device *dev,
+                          struct device_attribute *attr,
+                          const char *buf,
+                          size_t count)
+{
+    int val;
+
+    if (kstrtoint(buf, 10, &val))
+        return -EINVAL;
+
+    if (val < 0 || val > 2)
+        return -EINVAL;
+
+    mode = val;
+
+    printk(KERN_INFO "mode changed to %d\n", mode);
+
+    return count;
+}
+
+static DEVICE_ATTR(mode, 0664, mode_show, mode_store);
+
+static ssize_t sensor_value_show(struct device *dev,
+                                 struct device_attribute *attr,
+                                 char *buf)
+{
+    return sprintf(buf, "%d\n", sensor_value);
+}
+
+static DEVICE_ATTR(sensor_value,
+                   0444,
+                   sensor_value_show,
+                   NULL);
+
+static int sensor_stats_show(struct seq_file *m, void *v)
+{
+    seq_printf(m, "Industrial Embedded Linux Sensor Hub\n");
+    seq_printf(m, "===================================\n");
+    seq_printf(m, "Mode          : %d\n", mode);
+    seq_printf(m, "Sensor Value  : %d\n", sensor_value);
+    seq_printf(m, "Ring Head     : %d\n", rb.head);
+    seq_printf(m, "Ring Tail     : %d\n", rb.tail);
+
+    return 0;
+}
+
+static int sensor_stats_open(struct inode *inode,
+                             struct file *file)
+{
+    return single_open(file,
+                       sensor_stats_show,
+                       NULL);
+}
+
+static const struct proc_ops sensor_proc_ops = {
+    .proc_open    = sensor_stats_open,
+    .proc_read    = seq_read,
+    .proc_lseek   = seq_lseek,
+    .proc_release = single_release,
+};
+
 /* =================== PROBE ====================== */
 
 static int sensor_probe(struct platform_device *pdev)
@@ -310,6 +380,16 @@ static int sensor_probe(struct platform_device *pdev)
 
     my_class = class_create(THIS_MODULE, CLASS_NAME);
     my_device = device_create(my_class, NULL, dev_num, NULL, DEVICE_NAME);
+	
+	device_create_file(my_device, &dev_attr_mode);
+	
+	device_create_file(my_device,
+                   &dev_attr_sensor_value);
+				   
+	proc_entry = proc_create("sensor_stats",
+                         0444,
+                         NULL,
+                         &sensor_proc_ops);
 	
 	sensor_thread = kthread_run(
 				sensor_thread_fn,
@@ -340,6 +420,8 @@ static int sensor_remove(struct platform_device *pdev)
     printk(KERN_INFO "lkmchardev: removed\n");
 	
     printk(KERN_INFO "Platform Driver: remove() called\n");
+	
+	remove_proc_entry("sensor_stats", NULL);
 
     return 0;
 }

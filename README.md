@@ -2,11 +2,7 @@
 
 ## Overview
 
-Industrial Embedded Linux Sensor Hub Framework is a production-oriented Linux kernel development project designed to simulate a real embedded sensor subsystem commonly found in Qualcomm, AMD, Nvidia, Intel and Embedded Linux platforms.
-
-The project demonstrates end-to-end Linux device driver development concepts including Platform Drivers, Character Device Drivers, IOCTL interfaces, Ring Buffers, Producer–Consumer architecture, Kernel Threads, Wait Queues, poll(), Interrupt Handling (Top Half/Bottom Half), Workqueues, Synchronization primitives and event-driven driver architectures.
-
-The objective is to move beyond basic Linux character driver examples and build a scalable sensor framework that closely resembles real-world embedded Linux driver architectures.
+The project demonstrates production-style Linux device driver development covering the Linux Device Model, Platform Drivers, Character Device Drivers, sysfs, procfs, IOCTL interfaces, Ring Buffers, Producer–Consumer architecture, Kernel Threads, Wait Queues, poll(), Interrupt Handling (Top Half/Bottom Half), Workqueues, Synchronization primitives and event-driven driver architecture.
 
 ---
 
@@ -88,6 +84,20 @@ Bottom Half:
 * ISR workload reduction
 * Bottom-half execution model
 
+### sysfs Framework
+
+* Runtime driver configuration through sysfs
+* Device attributes for driver state monitoring
+* Read/Write kernel parameters from user space
+* Attribute management using DEVICE_ATTR()
+
+### procfs Framework
+
+* Runtime driver statistics
+* Driver diagnostic interface
+* Multi-parameter status reporting
+* seq_file based implementation
+
 ### Platform Driver Framework
 
 * Platform Device and Platform Driver implementation
@@ -128,7 +138,14 @@ Platform Driver
 probe()
 ↓
 Character Device Driver
-↓
+├───────────────┬───────────────┬
+│               │               │
+│               │               │
+/dev         /sysfs         /procfs
+│               │               │
+│               │               │
+IOCTL        Driver Config   Driver Statistics
+│
 Kernel Thread
 ↓
 Fake Interrupt Generation
@@ -168,6 +185,10 @@ User Space Applications
 * Linux Device Model
 * probe()/remove() Lifecycle
 * Mutex Synchronization
+* sysfs
+* procfs
+* seq_file Interface
+* DEVICE_ATTR()
 * User Space ↔ Kernel Space Communication
 
 ---
@@ -187,17 +208,9 @@ User Space Applications
 
 ## Planned Roadmap
 
-### Phase 2
-
-* Device Tree Integration
-* sysfs Interface
-* procfs Interface
-* DebugFS
-* Kernel Timer
-* kfifo Integration
-
 ### Phase 3
 
+* Device Tree
 * GPIO Driver Integration
 * I2C Driver Integration
 * SPI Driver Integration
@@ -205,6 +218,9 @@ User Space Applications
 
 ### Phase 4
 
+* DebugFS
+* Kernel Timer
+* kfifo Integration
 * Power Management (Suspend/Resume)
 * MMIO Register Framework
 * DMA Simulation Framework
