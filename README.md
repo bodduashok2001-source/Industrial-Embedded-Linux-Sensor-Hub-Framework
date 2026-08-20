@@ -2,7 +2,18 @@
 
 ## Overview
 
-The project demonstrates production-style Linux device driver development covering the Linux Device Model, Platform Drivers, Character Device Drivers, sysfs, procfs, IOCTL interfaces, Ring Buffers, Producer–Consumer architecture, Kernel Threads, Wait Queues, poll(), Interrupt Handling (Top Half/Bottom Half), Workqueues, Synchronization primitives and event-driven driver architecture.
+The **Industrial Embedded Linux Sensor Hub Framework** is a production-oriented Embedded Linux project demonstrating Linux kernel driver development, the Linux Device Model, platform drivers, character devices, kernel-to-user-space communication, interrupt handling, deferred processing, synchronization, and event-driven sensor data processing.
+
+The project is being extended toward a complete Embedded Linux stack covering:
+
+- Linux Device Driver Development
+- Multi-Sensor Framework
+- Device Tree
+- U-Boot
+- BSP concepts
+- Yocto Project
+- QEMU-based Embedded Linux development
+- Kernel and driver integration/debugging
 
 ---
 
@@ -204,7 +215,9 @@ User Space Applications
 * GCC
 * Makefile
 * Ubuntu Linux
+* Yocto/Poky
 * Git
+* QEMU
 * Vagrant
 * VirtualBox
 
@@ -219,6 +232,11 @@ User Space Applications
 * I2C Driver Integration
 * SPI Driver Integration
 * Multi-Sensor Framework
+* Socket programming for network driver
+* U-Boot
+* BSP
+* Yocto Project
+* QEMU
 
 ### Phase 3
 
@@ -236,12 +254,9 @@ User Space Applications
 
 * Linux Kernel Development
 * Linux Driver Architecture
-* Event Driven Systems
 * Synchronization Techniques
 * Interrupt Handling
-* Bottom Half Processing
 * Embedded Linux Internals
 * Linux Device Model
 * Platform Driver Framework
 * Driver Lifecycle Management
-* Production Style Driver Development
